@@ -1,0 +1,31 @@
+# Python privremene datoteke
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Konfiguracije i tajne
+backend/.env
+backend/.env.local
+.env
+.env.local
+
+# Lokalne SQLite baze i logovi
+backend/kolica.db
+backend/kolica_backup.db
+backend/grm_request_state.json
+
+# IDE postavke
+.vscode/
+.idea/
+
+# OS specifične datoteke
+Thumbs.db
+Desktop.ini
+~$*.xlsx
+
+# Upute i dokumentacija (Runbooks)
+/Runbook Kolica-app.md
+/Runbook Kolica-app Postgres.md
+/Runbook kolica-app minimal.md
+/Upute za Deploy Coolify.md

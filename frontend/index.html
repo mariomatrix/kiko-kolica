@@ -1,0 +1,1834 @@
+<!DOCTYPE html>
+<html lang="hr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Skeniranje Kolica — Dashboard</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;500;700&family=IBM+Plex+Sans:wght@300;400;600&display=swap');
+
+  :root {
+    --bg: #0d0f14; --surface: #141720; --surface2: #1c2030;
+    --border: #252a3a; --accent: #f5a623; --accent2: #3a7bd5;
+    --success: #2ecc71; --danger: #e74c3c; --warn: #f39c12;
+    --text: #e8eaf0; --muted: #5a6070;
+    --green-glow: 0 0 20px rgba(46,204,113,0.3);
+    --orange-glow: 0 0 20px rgba(245,166,35,0.4);
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:'IBM Plex Sans',sans-serif; min-height:100vh; overflow-x:hidden; }
+  body::before { content:''; position:fixed; inset:0; background-image:linear-gradient(rgba(245,166,35,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(245,166,35,0.03) 1px,transparent 1px); background-size:40px 40px; pointer-events:none; z-index:0; }
+  .app { position:relative; z-index:1; }
+
+  header { background:var(--surface); border-bottom:2px solid var(--accent); padding:0 2rem; height:64px; display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:100; box-shadow:0 4px 30px rgba(245,166,35,0.15); }
+  .logo { font-family:'Bebas Neue',sans-serif; font-size:1.8rem; letter-spacing:4px; color:var(--accent); display:flex; align-items:center; gap:12px; }
+  .logo-icon { width:34px; height:34px; background:var(--accent); clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%); display:flex; align-items:center; justify-content:center; font-size:1rem; }
+  .header-right { display:flex; align-items:center; gap:1.5rem; }
+  .clock { font-family:'IBM Plex Mono',monospace; font-size:1.1rem; color:var(--accent); letter-spacing:2px; }
+  .auth-user { font-family:'IBM Plex Mono',monospace; font-size:0.75rem; color:var(--text); }
+  .auth-btn { padding:8px 14px; border-radius:4px; border:1px solid var(--accent); background:transparent; color:var(--accent); font-family:'IBM Plex Mono',monospace; font-size:0.72rem; font-weight:700; letter-spacing:1px; cursor:pointer; text-transform:uppercase; }
+  .auth-btn:hover { background:rgba(245,166,35,0.08); }
+  .conn-badge { padding:6px 14px; border-radius:2px; font-family:'IBM Plex Mono',monospace; font-size:0.75rem; font-weight:700; letter-spacing:1px; border:1px solid; }
+  .conn-badge.online { color:var(--success); border-color:var(--success); background:rgba(46,204,113,0.1); }
+  .conn-badge.offline { color:var(--danger); border-color:var(--danger); background:rgba(231,76,60,0.1); }
+
+  main { display:grid; grid-template-columns:420px 1fr; grid-template-rows:auto 1fr; gap:0; height:calc(100vh - 64px); }
+
+  .left-panel { background:var(--surface); border-right:1px solid var(--border); display:flex; flex-direction:column; overflow:hidden; }
+  .panel-header { padding:1.5rem 1.5rem 1rem; border-bottom:1px solid var(--border); background:var(--surface2); }
+  .panel-title { font-family:'Bebas Neue',sans-serif; font-size:1.1rem; letter-spacing:3px; color:var(--muted); margin-bottom:4px; }
+  .panel-sub { font-size:0.75rem; color:var(--muted); font-family:'IBM Plex Mono',monospace; }
+
+  .scan-section { padding:1.5rem; border-bottom:1px solid var(--border); }
+  .scan-label { font-family:'IBM Plex Mono',monospace; font-size:0.7rem; letter-spacing:2px; color:var(--muted); text-transform:uppercase; margin-bottom:8px; display:flex; align-items:center; gap:8px; }
+  .scan-dot { width:6px; height:6px; border-radius:50%; background:var(--accent); animation:pulse 1.5s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1);} 50%{opacity:0.4;transform:scale(0.8);} }
+  .scan-input-wrap { position:relative; margin-bottom:12px; }
+  .scan-input { width:100%; background:var(--bg); border:2px solid var(--border); color:var(--text); font-family:'IBM Plex Mono',monospace; font-size:1rem; padding:14px 50px 14px 16px; border-radius:4px; outline:none; transition:border-color 0.2s,box-shadow 0.2s; letter-spacing:1px; }
+  .scan-input:focus { border-color:var(--accent); box-shadow:var(--orange-glow); }
+  .scan-input.success-flash { border-color:var(--success); box-shadow:var(--green-glow); animation:flash-success 0.4s ease; }
+  .scan-input.error-flash { border-color:var(--danger); box-shadow:0 0 20px rgba(231,76,60,0.3); animation:shake 0.4s ease; }
+  .scan-input.warn-flash { border-color:var(--warn) !important; box-shadow:0 0 20px rgba(243,156,18,0.4) !important; animation:warn-pulse 0.7s ease; }
+  @keyframes flash-success { 0%{background:rgba(46,204,113,0.15);}100%{background:var(--bg);} }
+  @keyframes shake { 0%,100%{transform:translateX(0);}25%{transform:translateX(-6px);}75%{transform:translateX(6px);} }
+  @keyframes warn-pulse { 0%,100%{box-shadow:0 0 20px rgba(243,156,18,0.4);}50%{box-shadow:0 0 40px rgba(243,156,18,0.8);} }
+  .scan-icon { position:absolute; right:14px; top:50%; transform:translateY(-50%); color:var(--muted); font-size:1.2rem; pointer-events:none; }
+
+  .kolica-section { padding:0 1.5rem 1.5rem; border-bottom:1px solid var(--border); }
+  .kolica-grid { display:grid; grid-template-columns:1fr 80px; gap:10px; align-items:end; }
+  .field-label { font-family:'IBM Plex Mono',monospace; font-size:0.7rem; letter-spacing:2px; color:var(--muted); text-transform:uppercase; margin-bottom:8px; display:block; }
+  .kolica-input { width:100%; background:var(--bg); border:2px solid var(--border); color:var(--accent); font-family:'IBM Plex Mono',monospace; font-size:1.4rem; font-weight:700; padding:12px 16px; border-radius:4px; outline:none; transition:border-color 0.2s,box-shadow 0.2s; text-align:center; }
+  .kolica-input:focus { border-color:var(--accent2); box-shadow:0 0 20px rgba(58,123,213,0.3); }
+
+  .btn { padding:12px 16px; border:none; cursor:pointer; font-family:'IBM Plex Mono',monospace; font-size:0.75rem; font-weight:700; letter-spacing:1px; text-transform:uppercase; border-radius:4px; transition:all 0.15s; }
+  .btn-primary { background:var(--accent); color:#000; }
+  .btn-primary:hover { background:#ffb84d; transform:translateY(-1px); }
+  .btn-confirm { background:var(--success); color:#000; padding:14px; font-size:0.85rem; display:flex; align-items:center; justify-content:center; gap:8px; flex:1; }
+  .btn-confirm:hover { background:#27ae60; transform:translateY(-1px); }
+  .btn-confirm:disabled { background:var(--muted); color:var(--bg); cursor:not-allowed; transform:none; }
+  .btn-reset { background:transparent; border:1px solid var(--border); color:var(--muted); padding:6px 12px; font-size:0.65rem; cursor:pointer; border-radius:3px; font-family:'IBM Plex Mono',monospace; letter-spacing:1px; transition:all 0.15s; }
+  .btn-reset:hover { color:var(--danger); border-color:var(--danger); }
+
+  /* STEP */
+  .step-wrap { position:relative; }
+  .step-num { display:inline-flex; align-items:center; justify-content:center; width:20px; height:20px; border-radius:50%; font-family:'IBM Plex Mono',monospace; font-size:0.65rem; font-weight:700; margin-right:6px; flex-shrink:0; transition:all 0.2s; }
+  .step-active .scan-label .step-num, .step-active .field-label .step-num { background:var(--accent); color:#000; }
+  .step-done .scan-label .step-num, .step-done .field-label .step-num { background:var(--success); color:#000; }
+  .step-locked .scan-label .step-num, .step-locked .field-label .step-num { background:var(--border); color:var(--muted); }
+  .step-active .scan-label, .step-active .field-label { color:var(--accent); }
+  .step-done .scan-label, .step-done .field-label { color:var(--success); }
+  .step-locked .scan-label, .step-locked .field-label { color:var(--muted); }
+  .step-locked .scan-input, .step-locked .kolica-input { opacity:0.4; cursor:not-allowed; }
+  .step-arrow { text-align:center; color:var(--muted); font-size:0.75rem; padding:6px 0 4px; letter-spacing:1px; font-family:'IBM Plex Mono',monospace; }
+
+  /* SCAN RESULT */
+  .scan-result { margin:1.5rem; background:var(--surface2); border:1px solid var(--border); border-radius:4px; overflow:hidden; display:none; }
+  .scan-result.visible { display:block; animation:slide-in 0.3s ease; }
+  @keyframes slide-in { from{opacity:0;transform:translateY(-10px);}to{opacity:1;transform:translateY(0);} }
+  .result-header { background:var(--bg); padding:10px 14px; font-family:'IBM Plex Mono',monospace; font-size:0.7rem; letter-spacing:2px; color:var(--muted); text-transform:uppercase; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
+  .result-found { color:var(--success); }
+  .result-notfound { color:var(--danger); }
+  .result-row { display:flex; justify-content:space-between; align-items:center; padding:9px 14px; border-bottom:1px solid var(--border); font-size:0.85rem; }
+  .result-row:last-child { border-bottom:none; }
+  .result-key { color:var(--muted); font-size:0.75rem; font-family:'IBM Plex Mono',monospace; }
+  .result-val { font-weight:600; font-family:'IBM Plex Mono',monospace; font-size:0.8rem; }
+
+  /* BADGES */
+  .badge-status { padding:3px 10px; border-radius:2px; font-size:0.7rem; font-weight:700; letter-spacing:1px; font-family:'IBM Plex Mono',monospace; }
+  .badge-SAVIJENO { background:rgba(46,204,113,0.15); color:var(--success); border:1px solid var(--success); }
+  .badge-IZREZANO { background:rgba(58,123,213,0.15); color:#6ab0ff; border:1px solid #3a7bd5; }
+  .badge-KRIVO { background:rgba(231,76,60,0.15); color:var(--danger); border:1px solid var(--danger); }
+  .badge-DODJELJENO { background:rgba(245,166,35,0.15); color:var(--accent); border:1px solid var(--accent); }
+  .badge-NA { background:rgba(243,156,18,0.12); color:var(--warn); border:1px solid var(--warn); }
+  .badge-ODBIJENO { background:rgba(231,76,60,0.12); color:var(--danger); border:1px solid var(--danger); }
+
+  /* LOG */
+  .log-section { flex:1; overflow:hidden; display:flex; flex-direction:column; }
+  .log-header-bar { padding:10px 1.5rem; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; background:var(--surface2); }
+  .log-title { font-family:'IBM Plex Mono',monospace; font-size:0.7rem; letter-spacing:2px; color:var(--muted); text-transform:uppercase; }
+  .log-count { font-family:'IBM Plex Mono',monospace; font-size:0.75rem; color:var(--accent); font-weight:700; }
+  .log-list { flex:1; overflow-y:auto; }
+  .log-list::-webkit-scrollbar{width:4px;} .log-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+  .log-item { padding:10px 1.5rem; border-bottom:1px solid var(--border); display:grid; grid-template-columns:1fr auto; gap:8px; align-items:center; animation:log-appear 0.3s ease; }
+  @keyframes log-appear { from{opacity:0;transform:translateX(-8px);}to{opacity:1;transform:translateX(0);} }
+  .log-barcode { font-family:'IBM Plex Mono',monospace; font-size:0.8rem; font-weight:700; color:var(--text); }
+  .log-part { font-size:0.72rem; color:var(--muted); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .log-kolica { font-family:'Bebas Neue',sans-serif; font-size:1.3rem; color:var(--accent); letter-spacing:1px; text-align:right; }
+  .log-time { font-family:'IBM Plex Mono',monospace; font-size:0.65rem; color:var(--muted); text-align:right; }
+
+  /* RIGHT PANEL */
+  .right-panel { display:flex; flex-direction:column; overflow:hidden; background:var(--bg); }
+  .table-toolbar { padding:1rem 1.5rem; border-bottom:1px solid var(--border); background:var(--surface); display:flex; align-items:center; gap:1rem; flex-wrap:wrap; }
+  .toolbar-title { font-family:'Bebas Neue',sans-serif; font-size:1.1rem; letter-spacing:3px; color:var(--text); flex:1; }
+  .search-box { background:var(--bg); border:1px solid var(--border); color:var(--text); font-family:'IBM Plex Mono',monospace; font-size:0.8rem; padding:8px 14px; border-radius:4px; outline:none; width:220px; transition:border-color 0.2s; }
+  .search-box:focus { border-color:var(--accent); }
+  .fetch-controls { display:flex; align-items:end; gap:10px; flex-wrap:wrap; padding:10px 14px; background:var(--surface2); border:1px solid var(--border); border-radius:4px; }
+  .fetch-field { display:flex; flex-direction:column; gap:6px; min-width:170px; }
+  .fetch-label { font-family:'IBM Plex Mono',monospace; font-size:0.65rem; letter-spacing:1px; color:var(--muted); text-transform:uppercase; }
+  .fetch-date { background:var(--bg); border:1px solid var(--border); color:var(--text); font-family:'IBM Plex Mono',monospace; font-size:0.8rem; padding:8px 10px; border-radius:4px; outline:none; min-height:36px; color-scheme:dark; }
+  .fetch-date:focus { border-color:var(--accent); }
+  .fetch-status { font-family:'IBM Plex Mono',monospace; font-size:0.68rem; color:var(--muted); min-width:180px; }
+  .fetch-status.busy { color:var(--accent); }
+  .fetch-status.ok { color:var(--success); }
+  .fetch-status.err { color:var(--danger); }
+  .fetch-status.warn { color:var(--warn); }
+  .admin-only.disabled-zone { opacity:0.45; pointer-events:none; }
+  .stat-chips { display:flex; gap:10px; flex-wrap:wrap; }
+  .chip { padding:6px 14px; border-radius:2px; font-family:'IBM Plex Mono',monospace; font-size:0.72rem; font-weight:700; letter-spacing:1px; border:1px solid; cursor:pointer; transition:all 0.15s; }
+  .chip.all { color:var(--muted); border-color:var(--border); }
+  .chip.all.active,.chip.all:hover { color:var(--text); border-color:var(--text); background:rgba(255,255,255,0.05); }
+  .chip.sav { color:var(--success); border-color:var(--success); }
+  .chip.sav.active,.chip.sav:hover { background:rgba(46,204,113,0.1); }
+  .chip.izr { color:#6ab0ff; border-color:var(--accent2); }
+  .chip.izr.active,.chip.izr:hover { background:rgba(58,123,213,0.1); }
+  .chip.krivo { color:var(--danger); border-color:var(--danger); }
+  .chip.krivo.active,.chip.krivo:hover { background:rgba(231,76,60,0.12); }
+  .chip.dod { color:var(--accent); border-color:var(--accent); }
+  .chip.dod.active,.chip.dod:hover { background:rgba(245,166,35,0.1); }
+
+  /* SUMMARY BAR */
+  .summary-bar { grid-column:1/-1; background:var(--surface2); border-bottom:1px solid var(--border); padding:0.75rem 1.5rem; display:flex; gap:2rem; align-items:center; flex-wrap:wrap; }
+  .summary-stat { display:flex; align-items:baseline; gap:6px; }
+  .stat-num { font-family:'Bebas Neue',sans-serif; font-size:1.8rem; line-height:1; }
+  .stat-label { font-family:'IBM Plex Mono',monospace; font-size:0.65rem; letter-spacing:1px; color:var(--muted); text-transform:uppercase; }
+  .stat-num.total{color:var(--text);} .stat-num.savijeno{color:var(--success);} .stat-num.izrezano{color:#6ab0ff;} .stat-num.dodjeljeno{color:var(--accent);} .stat-num.nema-kolica{color:var(--warn);}
+  .divider { width:1px; height:32px; background:var(--border); }
+
+  /* SHEET TABS */
+  .sheet-tabs { display:flex; overflow-x:auto; background:var(--surface2); border-bottom:1px solid var(--border); padding:0 1.5rem; }
+  .sheet-tab { padding:10px 16px; font-family:'IBM Plex Mono',monospace; font-size:0.7rem; letter-spacing:1px; color:var(--muted); cursor:pointer; border-bottom:2px solid transparent; white-space:nowrap; transition:color 0.15s,border-color 0.15s; text-transform:uppercase; }
+  .sheet-tab.active { color:var(--accent); border-bottom-color:var(--accent); }
+  .sheet-tab:hover { color:var(--text); }
+
+  /* TABLE */
+  .table-wrap { flex:1; overflow:auto; }
+  .table-wrap::-webkit-scrollbar{width:6px;height:6px;} .table-wrap::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+  table { width:100%; border-collapse:collapse; font-size:0.8rem; }
+  thead { position:sticky; top:0; z-index:10; }
+  th { background:var(--surface); border-bottom:2px solid var(--border); padding:10px 14px; text-align:left; font-family:'IBM Plex Mono',monospace; font-size:0.65rem; letter-spacing:2px; text-transform:uppercase; color:var(--muted); white-space:nowrap; cursor:pointer; user-select:none; transition:color 0.15s; }
+  th:hover { color:var(--accent); }
+  .filter-head th { padding:8px 10px; background:var(--surface2); border-bottom:1px solid var(--border); cursor:default; }
+  .filter-head th:hover { color:var(--muted); }
+  .column-filter { width:100%; min-width:84px; background:var(--bg); border:1px solid var(--border); color:var(--text); font-family:'IBM Plex Mono',monospace; font-size:0.68rem; padding:6px 8px; border-radius:4px; outline:none; }
+  .column-filter:focus { border-color:var(--accent); }
+  .filter-head th { position:relative; }
+  .column-filter-btn{width:100%;min-width:84px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:0.68rem;padding:6px 8px;border-radius:4px;outline:none;text-align:left;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:8px;}
+  .column-filter-btn:hover,.column-filter-btn.active{border-color:var(--accent);color:var(--accent);}
+  .filter-btn-text{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .filter-panel{position:absolute;top:calc(100% + 6px);left:0;z-index:30;width:240px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;box-shadow:0 12px 30px rgba(0,0,0,0.45);padding:10px;display:none;}
+  .filter-panel.visible{display:block;}
+  .filter-panel-search{width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:0.68rem;padding:7px 8px;border-radius:4px;outline:none;margin-bottom:8px;}
+  .filter-panel-search:focus{border-color:var(--accent);}
+  .filter-panel-actions{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;}
+  .filter-mini-btn{background:transparent;border:1px solid var(--border);color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:0.62rem;padding:5px 7px;border-radius:4px;cursor:pointer;}
+  .filter-mini-btn:hover{border-color:var(--accent);color:var(--accent);}
+  .filter-options{max-height:190px;overflow:auto;border:1px solid var(--border);border-radius:4px;background:var(--bg);padding:4px;}
+  .filter-option{display:flex;align-items:center;gap:8px;padding:5px 6px;font-family:'IBM Plex Mono',monospace;font-size:0.68rem;color:var(--text);}
+  .filter-option input{accent-color:var(--accent);}
+  .filter-empty{padding:8px 6px;color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:0.66rem;}
+  .filter-panel-footer{display:flex;justify-content:space-between;align-items:center;margin-top:8px;gap:8px;}
+  .filter-selected-count{font-family:'IBM Plex Mono',monospace;font-size:0.62rem;color:var(--muted);}
+  td { padding:10px 14px; border-bottom:1px solid var(--border); font-family:'IBM Plex Mono',monospace; vertical-align:middle; white-space:nowrap; }
+
+  tr.row-savijeno td { background:rgba(255,200,0,0.22); border-bottom-color:rgba(255,200,0,0.15); }
+  tr.row-savijeno:hover td { background:rgba(255,200,0,0.32); }
+  tr.row-savijeno-all td { background:rgba(46,204,113,0.2); border-bottom-color:rgba(46,204,113,0.15); }
+  tr.row-savijeno-all:hover td { background:rgba(46,204,113,0.3); }
+  tr.row-krivo td { background:rgba(231,76,60,0.18); border-bottom-color:rgba(231,76,60,0.15); }
+  tr.row-krivo:hover td { background:rgba(231,76,60,0.28); }
+  tr.highlighted td { background:rgba(245,166,35,0.15) !important; }
+  tr:hover td { background:rgba(255,255,255,0.02); }
+
+  .td-barcode{font-weight:700;color:var(--text);font-size:0.75rem;}
+  .td-part{color:#a0a8c0;max-width:160px;overflow:hidden;text-overflow:ellipsis;}
+  .td-kom{color:var(--accent);font-weight:700;}
+  .kom-input{width:70px;background:var(--bg);border:1px solid var(--border);color:var(--accent);font-family:'IBM Plex Mono',monospace;font-size:0.78rem;padding:6px 8px;border-radius:4px;outline:none;text-align:center;}
+  .kom-input:focus{border-color:var(--accent);}
+  .td-tijek{color:var(--text);font-weight:700;}
+  .tijek-edit{display:flex;align-items:center;gap:6px;}
+  .tijek-input{width:64px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:0.78rem;padding:6px 8px;border-radius:4px;outline:none;text-align:center;}
+  .tijek-input:focus{border-color:var(--accent);}
+  .tijek-total{color:var(--muted);font-size:0.72rem;}
+  .kolica-inline-input{width:84px;background:var(--bg);border:1px solid var(--border);color:var(--accent);font-family:'IBM Plex Mono',monospace;font-size:0.78rem;padding:6px 8px;border-radius:4px;outline:none;text-align:center;}
+  .kolica-inline-input:focus{border-color:var(--accent);}
+  .td-nalog{color:var(--muted);}
+  .td-broj-rn{color:var(--text);}
+  .td-klas{color:var(--accent2);font-size:0.7rem;}
+  .td-kolica{font-family:'Bebas Neue',sans-serif;font-size:1.2rem;color:var(--accent);letter-spacing:1px;}
+  .td-kolica.empty{color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:0.7rem;}
+  .td-turabr{color:var(--text);font-size:0.72rem;}
+  .td-mat{color:var(--muted);font-size:0.7rem;}
+  .op-chip{background:rgba(58,123,213,0.12);border:1px solid rgba(58,123,213,0.3);color:#6ab0ff;padding:2px 8px;border-radius:2px;font-size:0.65rem;max-width:120px;overflow:hidden;text-overflow:ellipsis;display:inline-block;}
+  .empty-table{text-align:center;padding:4rem;color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:0.85rem;}
+
+  /* TOAST */
+  .toast-container { position:fixed; top:80px; right:20px; z-index:9999; display:flex; flex-direction:column; gap:8px; }
+  .toast { background:var(--surface2); border-left:4px solid; padding:12px 18px; border-radius:4px; font-family:'IBM Plex Mono',monospace; font-size:0.8rem; max-width:320px; animation:toast-in 0.3s ease; box-shadow:0 4px 20px rgba(0,0,0,0.4); }
+  .toast.success{border-color:var(--success);color:var(--success);}
+  .toast.error{border-color:var(--danger);color:var(--danger);}
+  .toast.info{border-color:var(--accent2);color:#6ab0ff;}
+  .toast.warn{border-color:var(--warn);color:var(--warn);}
+  @keyframes toast-in { from{opacity:0;transform:translateX(20px);}to{opacity:1;transform:translateX(0);} }
+
+  /* STATUS DROPDOWN */
+  .status-badge-btn { cursor:pointer; transition:opacity 0.15s,transform 0.1s; user-select:none; }
+  .status-badge-btn:hover { opacity:0.8; transform:scale(1.04); }
+  #statusDropdown { position:fixed; z-index:9999; background:var(--surface2); border:1px solid var(--border); border-radius:4px; box-shadow:0 8px 32px rgba(0,0,0,0.5); display:none; min-width:160px; overflow:hidden; }
+  #statusDropdown.visible { display:block; animation:dd-in 0.15s ease; }
+  @keyframes dd-in { from{opacity:0;transform:translateY(-6px);}to{opacity:1;transform:translateY(0);} }
+  .dd-option { padding:9px 16px; font-family:'IBM Plex Mono',monospace; font-size:0.75rem; cursor:pointer; transition:background 0.1s; color:var(--text); }
+  .dd-option:hover { background:rgba(255,255,255,0.06); }
+  .dd-selected { color:var(--accent); font-weight:700; }
+  .dd-selected::after { content:" ✓"; }
+
+  /* MODAL */
+  #noIzrezanoModal { position:fixed; inset:0; z-index:9998; background:rgba(0,0,0,0.75); display:none; align-items:center; justify-content:center; backdrop-filter:blur(4px); }
+  #noIzrezanoModal.visible { display:flex; animation:modal-in 0.2s ease; }
+  @keyframes modal-in { from{opacity:0;transform:scale(0.95);}to{opacity:1;transform:scale(1);} }
+  .modal-box { background:var(--surface2); border:2px solid var(--danger); border-radius:6px; padding:2rem; max-width:420px; width:90%; box-shadow:0 0 60px rgba(231,76,60,0.3); text-align:center; }
+  .modal-icon { font-size:3rem; margin-bottom:1rem; }
+  .modal-title { font-family:'Bebas Neue',sans-serif; font-size:1.5rem; letter-spacing:3px; color:var(--danger); margin-bottom:0.75rem; }
+  .modal-body { font-family:'IBM Plex Mono',monospace; font-size:0.8rem; color:var(--muted); line-height:1.7; margin-bottom:1.5rem; }
+  .modal-barcode { font-family:'IBM Plex Mono',monospace; font-size:1.1rem; font-weight:700; color:var(--text); background:var(--bg); padding:8px 16px; border-radius:4px; display:inline-block; margin:0.5rem 0 1rem; border:1px solid var(--border); }
+  .btn-close-modal { background:var(--danger); color:#fff; border:none; padding:12px 28px; font-family:'IBM Plex Mono',monospace; font-size:0.85rem; font-weight:700; letter-spacing:1px; border-radius:4px; cursor:pointer; transition:background 0.15s; }
+  .btn-close-modal:hover { background:#c0392b; }
+
+  /* AUTH MODAL */
+  #loginModal { position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,0.78); display:none; align-items:center; justify-content:center; backdrop-filter:blur(4px); }
+  #loginModal.visible { display:flex; animation:modal-in 0.2s ease; }
+  .login-box { background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:1.8rem; width:min(420px,92vw); box-shadow:0 18px 70px rgba(0,0,0,0.55); }
+  .login-title { font-family:'Bebas Neue',sans-serif; font-size:1.5rem; letter-spacing:3px; color:var(--accent); margin-bottom:0.35rem; }
+  .login-sub { font-family:'IBM Plex Mono',monospace; font-size:0.72rem; color:var(--muted); margin-bottom:1.25rem; }
+  .login-field { display:flex; flex-direction:column; gap:6px; margin-bottom:1rem; }
+  .login-field label { font-family:'IBM Plex Mono',monospace; font-size:0.68rem; color:var(--muted); text-transform:uppercase; letter-spacing:1px; }
+  .login-input { background:var(--bg); border:1px solid var(--border); color:var(--text); font-family:'IBM Plex Mono',monospace; font-size:0.85rem; padding:11px 12px; border-radius:4px; outline:none; }
+  .login-input:focus { border-color:var(--accent); }
+  .login-error { min-height:18px; color:var(--danger); font-family:'IBM Plex Mono',monospace; font-size:0.72rem; margin-bottom:0.9rem; }
+  .login-actions { display:flex; justify-content:flex-end; gap:10px; }
+
+  /* WORK ORDER PICKER */
+  #workOrderModal { position:fixed; inset:0; z-index:9997; background:rgba(0,0,0,0.72); display:none; align-items:center; justify-content:center; backdrop-filter:blur(4px); }
+  #workOrderModal.visible { display:flex; animation:modal-in 0.2s ease; }
+  .wo-modal-box { background:var(--surface2); border:1px solid var(--border); border-radius:8px; width:min(920px,92vw); max-height:84vh; display:flex; flex-direction:column; box-shadow:0 20px 80px rgba(0,0,0,0.55); overflow:hidden; }
+  .wo-modal-head { padding:1.2rem 1.4rem 0.8rem; border-bottom:1px solid var(--border); background:var(--surface); }
+  .wo-modal-title { font-family:'Bebas Neue',sans-serif; font-size:1.35rem; letter-spacing:3px; color:var(--accent); }
+  .wo-modal-sub { font-family:'IBM Plex Mono',monospace; font-size:0.72rem; color:var(--muted); margin-top:4px; }
+  .wo-modal-tools { padding:1rem 1.4rem; display:flex; gap:10px; align-items:center; flex-wrap:wrap; border-bottom:1px solid var(--border); }
+  .wo-search { flex:1; min-width:240px; background:var(--bg); border:1px solid var(--border); color:var(--text); font-family:'IBM Plex Mono',monospace; font-size:0.8rem; padding:10px 12px; border-radius:4px; outline:none; }
+  .wo-search:focus { border-color:var(--accent); }
+  .wo-counts { font-family:'IBM Plex Mono',monospace; font-size:0.72rem; color:var(--muted); }
+  .wo-action { background:transparent; border:1px solid var(--border); color:var(--text); padding:8px 12px; border-radius:4px; font-family:'IBM Plex Mono',monospace; font-size:0.7rem; cursor:pointer; }
+  .wo-action:hover { border-color:var(--accent); color:var(--accent); }
+  .wo-list { overflow:auto; padding:0.5rem 1rem 1rem; display:flex; flex-direction:column; gap:8px; min-height:220px; }
+  .wo-item { display:flex; align-items:flex-start; gap:12px; padding:12px; background:var(--surface); border:1px solid var(--border); border-radius:6px; cursor:pointer; transition:border-color 0.15s, background 0.15s; }
+  .wo-item:hover { border-color:var(--accent2); background:rgba(58,123,213,0.06); }
+  .wo-item.selected { border-color:var(--accent); background:rgba(245,166,35,0.08); }
+  .wo-item input { margin-top:3px; }
+  .wo-main { flex:1; min-width:0; }
+  .wo-line1 { font-family:'IBM Plex Mono',monospace; font-size:0.85rem; color:var(--text); font-weight:700; }
+  .wo-line2 { font-family:'IBM Plex Mono',monospace; font-size:0.72rem; color:var(--muted); margin-top:3px; }
+  .wo-badge { font-family:'IBM Plex Mono',monospace; font-size:0.68rem; color:var(--accent); border:1px solid rgba(245,166,35,0.35); background:rgba(245,166,35,0.08); padding:4px 8px; border-radius:20px; white-space:nowrap; }
+  .wo-empty { padding:2rem; text-align:center; color:var(--muted); font-family:'IBM Plex Mono',monospace; font-size:0.8rem; }
+  .wo-modal-foot { padding:1rem 1.4rem; border-top:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; gap:12px; background:var(--surface); }
+  .wo-selected-info { font-family:'IBM Plex Mono',monospace; font-size:0.72rem; color:var(--muted); }
+
+  /* KOM IMPORT MODAL */
+  #komImportModal { position:fixed; inset:0; z-index:10001; background:rgba(0,0,0,0.78); display:none; align-items:center; justify-content:center; backdrop-filter:blur(4px); }
+  #komImportModal.visible { display:flex; animation:modal-in 0.2s ease; }
+  .kom-modal-box { background:var(--surface2); border:1px solid var(--border); border-radius:8px; width:min(860px,92vw); max-height:86vh; display:flex; flex-direction:column; box-shadow:0 20px 80px rgba(0,0,0,0.55); overflow:hidden; }
+  .kom-modal-head { padding:1.2rem 1.4rem 0.8rem; border-bottom:1px solid var(--border); background:var(--surface); }
+  .kom-modal-title { font-family:'Bebas Neue',sans-serif; font-size:1.35rem; letter-spacing:3px; color:var(--accent); }
+  .kom-modal-sub { font-family:'IBM Plex Mono',monospace; font-size:0.72rem; color:var(--muted); margin-top:4px; }
+  .kom-modal-body { padding:1rem 1.4rem; overflow:auto; display:grid; gap:12px; }
+  .kom-stats-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:10px; }
+  .kom-stat-card { background:var(--bg); border:1px solid var(--border); border-radius:6px; padding:12px; }
+  .kom-stat-label { font-family:'IBM Plex Mono',monospace; font-size:0.63rem; color:var(--muted); letter-spacing:1px; text-transform:uppercase; }
+  .kom-stat-value { font-family:'Bebas Neue',sans-serif; font-size:1.55rem; color:var(--text); margin-top:4px; letter-spacing:1px; }
+  .kom-section { border:1px solid var(--border); border-radius:6px; overflow:hidden; }
+  .kom-section-head { padding:10px 12px; background:var(--surface); font-family:'IBM Plex Mono',monospace; font-size:0.72rem; color:var(--text); letter-spacing:1px; text-transform:uppercase; }
+  .kom-section-body { background:var(--bg); max-height:170px; overflow:auto; }
+  .kom-empty { padding:12px; font-family:'IBM Plex Mono',monospace; font-size:0.72rem; color:var(--muted); }
+  .kom-list-row { padding:9px 12px; border-bottom:1px solid var(--border); font-family:'IBM Plex Mono',monospace; font-size:0.72rem; color:var(--text); display:flex; justify-content:space-between; gap:10px; }
+  .kom-list-row:last-child { border-bottom:none; }
+  .kom-list-main { display:flex; flex-direction:column; gap:4px; }
+  .kom-list-sub { color:var(--muted); font-size:0.66rem; }
+  .kom-modal-foot { padding:1rem 1.4rem; border-top:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; gap:12px; background:var(--surface); }
+  .kom-selected-info { font-family:'IBM Plex Mono',monospace; font-size:0.72rem; color:var(--muted); }
+  .btn-secondary { background:transparent; color:var(--text); border:1px solid var(--border); }
+  .btn-secondary:hover { border-color:var(--danger); color:var(--danger); }
+
+  /* LOADING OVERLAY */
+  #loadingOverlay { position:fixed; inset:0; z-index:99999; background:var(--bg); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1rem; transition:opacity 0.4s; }
+  #loadingOverlay.hidden { opacity:0; pointer-events:none; }
+  .loading-logo { font-family:'Bebas Neue',sans-serif; font-size:2.5rem; letter-spacing:6px; color:var(--accent); }
+  .loading-bar { width:200px; height:2px; background:var(--border); border-radius:1px; overflow:hidden; }
+  .loading-bar-inner { height:100%; background:var(--accent); animation:loading 1.5s infinite; }
+  @keyframes loading { 0%{width:0;margin-left:0;}50%{width:60%;margin-left:20%;}100%{width:0;margin-left:100%;} }
+  .loading-text { font-family:'IBM Plex Mono',monospace; font-size:0.75rem; color:var(--muted); letter-spacing:2px; }
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- LOADING -->
+<div id="loadingOverlay">
+  <div class="loading-logo">⬡ KOLICA SCAN</div>
+  <div class="loading-bar"><div class="loading-bar-inner"></div></div>
+  <div class="loading-text" id="loadingText">SPAJANJE NA SERVER...</div>
+</div>
+
+<header>
+  <div class="logo"><div class="logo-icon">⬡</div>KOLICA SCAN</div>
+  <div class="header-right">
+    <span class="clock" id="clock">--:--:--</span>
+    <span class="auth-user" id="authUserLabel">Niste prijavljeni</span>
+    <button class="auth-btn" id="authActionBtn" onclick="openLoginModal()">Prijava</button>
+    <span class="conn-badge offline" id="connBadge">● OFFLINE</span>
+  </div>
+</header>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<main>
+  <div class="summary-bar">
+    <div class="summary-stat"><span class="stat-num total" id="stat-total">0</span><span class="stat-label">Ukupno</span></div>
+    <div class="divider"></div>
+    <div class="summary-stat"><span class="stat-num savijeno" id="stat-sav">0</span><span class="stat-label">Savijeno</span></div>
+    <div class="summary-stat"><span class="stat-num izrezano" id="stat-izr">0</span><span class="stat-label">Izrezano</span></div>
+    <div class="divider"></div>
+    <div class="summary-stat"><span class="stat-num dodjeljeno" id="stat-dod">0</span><span class="stat-label">S kolicima</span></div>
+    <div class="summary-stat"><span class="stat-num nema-kolica" id="stat-nema">0</span><span class="stat-label">Bez kolica</span></div>
+    <div class="divider"></div>
+    <div class="summary-stat"><span class="stat-num total" id="stat-kom-total">0</span><span class="stat-label">Kom ukupno</span></div>
+    <div class="summary-stat"><span class="stat-num savijeno" id="stat-kom-scanned">0</span><span class="stat-label">Skenirano</span></div>
+    <div class="summary-stat"><span class="stat-num izrezano" id="stat-kom-remaining">0</span><span class="stat-label">Preostalo</span></div>
+    <div class="summary-stat"><span class="stat-num dodjeljeno" id="stat-kom-score">0%</span><span class="stat-label">Score</span></div>
+  </div>
+
+  <div class="left-panel">
+    <div class="panel-header">
+      <div class="panel-title">Skeniranje</div>
+      <div class="panel-sub">Skenirajte barcode ili unesite ručno</div>
+    </div>
+
+    <div class="scan-section step-wrap step-active" id="barcodeWrap">
+      <div class="scan-label">
+        <span class="step-num">1</span>
+        <span class="scan-dot"></span>
+        Barcode potrebe / QR parta
+      </div>
+      <div class="scan-input-wrap">
+        <input type="text" id="barcodeInput" class="scan-input" placeholder="Skenirajte ili upišite barcode..." autocomplete="off" spellcheck="false"/>
+        <span class="scan-icon">⌞⌟</span>
+      </div>
+    </div>
+
+    <div class="step-arrow">↓ KORAK 2</div>
+    <div class="kolica-section step-wrap step-locked" id="kolicaWrap">
+      <label class="field-label"><span class="step-num">2</span> Broj kolica</label>
+      <div class="kolica-grid">
+        <input type="number" id="kolicaInput" class="kolica-input" placeholder="—" min="1" max="999"/>
+        <button class="btn btn-primary" onclick="clearKolica()">CLR</button>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <button class="btn-reset" onclick="resetScan()">↺ RESET</button>
+        <button class="btn btn-confirm" id="confirmBtn" onclick="confirmAssign()" disabled>✓ &nbsp;DODIJELI KOLICA</button>
+      </div>
+    </div>
+
+    <div class="scan-result" id="scanResult">
+      <div class="result-header">
+        <span>Pronađeno</span>
+        <span id="resultCount" class="result-found">—</span>
+      </div>
+      <div id="resultRows"></div>
+    </div>
+
+    <div class="log-section">
+      <div class="log-header-bar">
+        <span class="log-title">Log dodjele</span>
+        <span class="log-count" id="logCount">0</span>
+      </div>
+      <div class="log-list" id="logList">
+        <div style="padding:1.5rem;color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:0.75rem;text-align:center;">Nema dodijeljenih kolica</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="right-panel">
+    <div class="sheet-tabs" id="sheetTabs"></div>
+    <div class="table-toolbar">
+      <span class="toolbar-title" id="tableTitle">Pregled podataka</span>
+      <input type="text" class="search-box" id="searchBox" placeholder="Pretraži..." oninput="filterTable()">
+      <div class="fetch-controls">
+        <div class="fetch-field">
+          <label class="fetch-label" for="fetchFromDate">Početni datum</label>
+          <input type="date" id="fetchFromDate" class="fetch-date">
+        </div>
+        <div class="fetch-field">
+          <label class="fetch-label" for="fetchToDate">Završni datum</label>
+          <input type="date" id="fetchToDate" class="fetch-date">
+        </div>
+        <button class="btn btn-primary" id="fetchStartBtn" onclick="startFetchRequest()">Start obrade</button>
+        <button class="btn btn-secondary" id="komImportBtn" onclick="openKomImportPicker()">Uvezi KOM</button>
+        <input type="file" id="komImportFileInput" accept=".xlsx,.xls,.xlsm" style="display:none" onchange="handleKomImportFileSelected(event)">
+        <div id="fetchStatus" class="fetch-status">GRM fetch nije pokrenut</div>
+      </div>
+      <div class="stat-chips">
+        <span class="chip all active" onclick="setFilter('sve',this)">SVE</span>
+        <span class="chip sav" onclick="setFilter('SAVIJENO',this)">SAVIJENO</span>
+        <span class="chip izr" onclick="setFilter('IZREZANO',this)">IZREZANO</span>
+        <span class="chip krivo" onclick="setFilter('KRIVO SAVIJENO',this)">KRIVO SAVIJENO</span>
+        <span class="chip dod" onclick="setFilter('kolica',this)">S KOLICIMA</span>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th onclick="sortTable('barcode')">Barcode ↕</th>
+            <th onclick="sortTable('nalog')">Radni nalog ↕</th>
+            <th onclick="sortTable('broj_rn')">Broj RN ↕</th>
+            <th onclick="sortTable('part')">Part ↕</th>
+            <th onclick="sortTable('kom')">KOM. ↕</th>
+            <th onclick="sortTable('materijal')">Materijal ↕</th>
+            <th onclick="sortTable('klasifikacija')">Klasifikacija ↕</th>
+            <th onclick="sortTable('tijek')">Tijek ↕</th>
+            <th onclick="sortTable('status')">Status ↕</th>
+            <th onclick="sortTable('kolica')">Kolica br. ↕</th>
+            <th onclick="sortTable('tura_br')">Tura br ↕</th>
+            <th onclick="sortTable('operater')">Operater ↕</th>
+            <th onclick="sortTable('vrijeme')">Vrijeme ↕</th>
+          </tr>
+          <tr class="filter-head" id="columnFilterRow"></tr>
+        </thead>
+        <tbody id="tableBody"><tr><td colspan="13" class="empty-table">Učitavanje...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</main>
+</div>
+
+<!-- DROPDOWN & MODAL -->
+<div id="statusDropdown"></div>
+<div id="noIzrezanoModal">
+  <div class="modal-box">
+    <div class="modal-icon">⚠</div>
+    <div class="modal-title">Nema više skeniranja</div>
+    <div class="modal-body">
+      Barcode potrebe:
+      <div class="modal-barcode" id="modalBarcode">—</div>
+      Pronađeno <strong id="modalCount">0</strong> zapis(a), ali nijedan više nema otvoren tijek skeniranja.<br>
+      Trenutni status: <strong id="modalStatus" style="color:var(--accent)">—</strong>
+    </div>
+    <button class="btn-close-modal" onclick="closeModal()">U REDU</button>
+  </div>
+</div>
+
+<div id="workOrderModal">
+  <div class="wo-modal-box">
+    <div class="wo-modal-head">
+      <div class="wo-modal-title">Odabir radnih naloga</div>
+      <div class="wo-modal-sub" id="workOrderModalSub">Odaberite koje naloge želite učitati u aktivnu turu.</div>
+    </div>
+    <div class="wo-modal-tools">
+      <input type="text" id="workOrderSearch" class="wo-search" placeholder="Pretraži SIFRADN, N broj ili TURA BR..." oninput="renderWorkOrderOptions()">
+      <button class="wo-action" onclick="selectVisibleWorkOrders(true)">Odaberi prikazane</button>
+      <button class="wo-action" onclick="selectVisibleWorkOrders(false)">Makni prikazane</button>
+      <button class="wo-action" onclick="selectAllWorkOrders()">Odaberi sve</button>
+      <button class="wo-action" onclick="clearAllWorkOrders()">Makni sve</button>
+      <div class="wo-counts" id="workOrderCounts">Ukupno: 0 | Odabrano: 0</div>
+    </div>
+    <div class="wo-list" id="workOrderList">
+      <div class="wo-empty">Nema naloga za odabir.</div>
+    </div>
+    <div class="wo-modal-foot">
+      <div class="wo-selected-info" id="workOrderSelectedInfo">Odabrano: 0</div>
+      <div style="display:flex;gap:10px;">
+        <button class="btn btn-secondary" onclick="cancelWorkOrderSelection()">Odustani</button>
+        <button class="btn btn-primary" id="confirmWorkOrdersBtn" onclick="confirmWorkOrderSelection()" disabled>Učitaj odabrane</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="komImportModal">
+  <div class="kom-modal-box">
+    <div class="kom-modal-head">
+      <div class="kom-modal-title">Preview KOM Importa</div>
+      <div class="kom-modal-sub" id="komImportSub">Pregled promjena za trenutnu turu.</div>
+    </div>
+    <div class="kom-modal-body">
+      <div class="kom-stats-grid" id="komImportStats"></div>
+      <div class="kom-section">
+        <div class="kom-section-head">Matchani barkodovi</div>
+        <div class="kom-section-body" id="komImportMatches"></div>
+      </div>
+      <div class="kom-section">
+        <div class="kom-section-head">Konfliktni barkodovi</div>
+        <div class="kom-section-body" id="komImportConflicts"></div>
+      </div>
+      <div class="kom-section">
+        <div class="kom-section-head">Barkodovi bez matcha u turi</div>
+        <div class="kom-section-body" id="komImportMissing"></div>
+      </div>
+      <div class="kom-section">
+        <div class="kom-section-head">Invalidni redovi</div>
+        <div class="kom-section-body" id="komImportInvalid"></div>
+      </div>
+    </div>
+    <div class="kom-modal-foot">
+      <div class="kom-selected-info" id="komImportInfo">Nema previewa.</div>
+      <div style="display:flex;gap:10px;">
+        <button class="btn btn-secondary" onclick="closeKomImportModal()">Odustani</button>
+        <button class="btn btn-primary" id="confirmKomImportBtn" onclick="applyKomImportPreview()" disabled>Primijeni</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="loginModal">
+  <div class="login-box">
+    <div class="login-title">Prijava</div>
+    <div class="login-sub">Prijavite se kao administrator ili operater.</div>
+    <div class="login-field">
+      <label for="loginUsername">Korisničko ime</label>
+      <input type="text" id="loginUsername" class="login-input" autocomplete="username">
+    </div>
+    <div class="login-field">
+      <label for="loginPassword">Lozinka</label>
+      <input type="password" id="loginPassword" class="login-input" autocomplete="current-password">
+    </div>
+    <div class="login-error" id="loginError"></div>
+    <div class="login-actions">
+      <button class="btn btn-secondary" onclick="closeLoginModal()">Odustani</button>
+      <button class="btn btn-primary" onclick="submitLogin()">Prijava</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── CONFIG ──────────────────────────────────────────────────────────────────
+// Promijeni ovo u IP adresu servera ako dashbord otvara s drugog računala
+// Npr: const API = 'http://192.168.1.100:8000'
+const API = '';  // prazno = isti server
+
+// ─── STATE ───────────────────────────────────────────────────────────────────
+let currentSheet = null;
+let allData = [];       // svi retci svih tura
+let activeData = [];    // samo trenutna tura
+let displayData = [];
+let filterStatus = 'sve';
+let sortKey = null, sortDir = 1;
+let highlightedIds = new Set();
+let scanLog = [];
+let lastScannedBarcode = null;
+let lastScannedRowId = null;
+let scanStep = 'barcode';
+let fetchBusy = false;
+let pendingFetchRequestId = null;
+let pendingWorkOrders = [];
+let selectedWorkOrders = new Set();
+let komImportPreview = null;
+let columnFilters = {};
+let columnFilterDrafts = {};
+let columnFilterSearches = {};
+let openColumnFilterKey = null;
+let currentUser = null;
+let authReady = false;
+
+const STATUS_OPTIONS = ['IZREZANO','SAVIJENO','KRIVO SAVIJENO','DODJELJENO','NA ČEKANJU','ODBIJENO'];
+const COLUMN_FILTERS = [
+  {key:'barcode', label:'Barcode'},
+  {key:'nalog', label:'Radni nalog'},
+  {key:'broj_rn', label:'Broj RN'},
+  {key:'part', label:'Part'},
+  {key:'kom', label:'KOM.'},
+  {key:'materijal', label:'Materijal'},
+  {key:'klasifikacija', label:'Klasifikacija'},
+  {key:'tijek', label:'Tijek'},
+  {key:'status', label:'Status'},
+  {key:'kolica', label:'Kolica br.'},
+  {key:'tura_br', label:'Tura br'},
+  {key:'operater', label:'Operater'},
+  {key:'vrijeme', label:'Vrijeme'},
+];
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+async function init() {
+  startClock();
+  setupFetchControls();
+  setupScanInput();
+  setupLoginInputs();
+  await restoreAuthSession();
+  hideLoading();
+}
+
+function hideLoading() {
+  document.getElementById('loadingOverlay').classList.add('hidden');
+  setTimeout(() => document.getElementById('loadingOverlay').style.display = 'none', 400);
+}
+
+function startClock() {
+  const el = document.getElementById('clock');
+  setInterval(() => el.textContent = new Date().toLocaleTimeString('hr-HR',{hour12:false}), 1000);
+  el.textContent = new Date().toLocaleTimeString('hr-HR',{hour12:false});
+}
+
+function setupFetchControls() {
+  const from = document.getElementById('fetchFromDate');
+  const to = document.getElementById('fetchToDate');
+  const today = new Date();
+  const prior = new Date(today);
+  prior.setDate(today.getDate() - 30);
+  from.value = toDateInputValue(prior);
+  to.value = toDateInputValue(today);
+}
+
+function setupLoginInputs() {
+  const username = document.getElementById('loginUsername');
+  const password = document.getElementById('loginPassword');
+  [username, password].forEach(el => {
+    el.addEventListener('keydown', e => {
+      if(e.key === 'Enter') submitLogin();
+    });
+  });
+}
+
+function toDateInputValue(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function setFetchStatus(text, cls='') {
+  const el = document.getElementById('fetchStatus');
+  el.textContent = text;
+  el.className = 'fetch-status' + (cls ? ` ${cls}` : '');
+}
+
+function setFetchBusy(busy) {
+  fetchBusy = busy;
+  document.getElementById('fetchStartBtn').disabled = busy;
+  document.getElementById('fetchFromDate').disabled = busy;
+  document.getElementById('fetchToDate').disabled = busy;
+  const confirmBtn = document.getElementById('confirmWorkOrdersBtn');
+  if(confirmBtn) confirmBtn.disabled = busy || selectedWorkOrders.size === 0;
+}
+
+function normalizeColumnValue(row, key) {
+  let value = row[key];
+  if(key === 'kom') return value != null && value !== '' ? String(value) : '1';
+  if(key === 'tijek') return formatTijek(row);
+  if(key === 'kolica') return value != null && value !== '' ? String(value) : '__EMPTY__';
+  if(key === 'operater') return value ? String(value).split('@')[0].trim() : '__EMPTY__';
+  value = String(value ?? '').trim();
+  return value ? value : '__EMPTY__';
+}
+
+function getColumnFilterTokens(row, key) {
+  if(key === 'klasifikacija') {
+    const raw = String(row?.klasifikacija ?? '').trim();
+    if(!raw) return ['__EMPTY__'];
+    const parts = raw.split(';').map(part => part.trim()).filter(Boolean);
+    return parts.length ? parts : ['__EMPTY__'];
+  }
+  return [normalizeColumnValue(row, key)];
+}
+
+function getColumnFilterValues(key) {
+  return [...new Set(
+    activeData.flatMap(item => getColumnFilterTokens(item, key))
+  )].sort((a, b) =>
+    displayColumnValue(a).localeCompare(displayColumnValue(b), 'hr', {numeric:true, sensitivity:'base'})
+  );
+}
+
+function displayColumnValue(normalizedValue) {
+  return normalizedValue === '__EMPTY__' ? '—' : normalizedValue;
+}
+
+function getKomValue(row) {
+  return Math.max(1, parseInt(row?.kom ?? 1, 10) || 1);
+}
+
+function getScanCountValue(row) {
+  const kom = getKomValue(row);
+  const raw = parseInt(row?.scan_count ?? 0, 10) || 0;
+  return Math.min(Math.max(raw, 0), kom);
+}
+
+function formatTijek(row) {
+  return `${getScanCountValue(row)} od ${getKomValue(row)}`;
+}
+
+function getSortValue(row, key) {
+  if(key === 'kom') return getKomValue(row);
+  if(key === 'tijek') return `${String(getScanCountValue(row)).padStart(6,'0')}/${String(getKomValue(row)).padStart(6,'0')}`;
+  if(key === 'kolica') return row.kolica == null || row.kolica === '' ? -1 : Number(row.kolica);
+  return String(row[key] ?? '').toLowerCase();
+}
+
+function getColumnFilterSummary(key) {
+  const selected = Array.isArray(columnFilters[key]) ? columnFilters[key] : [];
+  if(!selected.length) return 'Sve';
+  if(selected.length === 1) return displayColumnValue(selected[0]);
+  return `${selected.length} odabrano`;
+}
+
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function escapeJs(value) {
+  return String(value ?? '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+}
+
+function isAdmin() {
+  return currentUser && currentUser.role === 'admin';
+}
+
+function setAuthUI() {
+  const label = document.getElementById('authUserLabel');
+  const btn = document.getElementById('authActionBtn');
+  const fetchBox = document.querySelector('.fetch-controls');
+  const barcodeInput = document.getElementById('barcodeInput');
+  const kolicaInput = document.getElementById('kolicaInput');
+
+  if(currentUser) {
+    label.textContent = `${currentUser.role === 'admin' ? 'Admin' : 'Operater'}: ${currentUser.display_name}`;
+    btn.textContent = 'Odjava';
+    btn.onclick = logoutUser;
+  } else {
+    label.textContent = 'Niste prijavljeni';
+    btn.textContent = 'Prijava';
+    btn.onclick = openLoginModal;
+  }
+
+  if(fetchBox) {
+    fetchBox.classList.toggle('disabled-zone', !isAdmin());
+  }
+
+  const allowWork = !!currentUser;
+  barcodeInput.disabled = !allowWork;
+  if(!allowWork) {
+    document.getElementById('confirmBtn').disabled = true;
+    kolicaInput.disabled = true;
+  } else {
+    setScanStep(scanStep === 'kolica' ? 'kolica' : 'barcode');
+  }
+}
+
+function clearUiDataForLogout() {
+  currentSheet = null;
+  allData = [];
+  activeData = [];
+  displayData = [];
+  komImportPreview = null;
+  columnFilters = {};
+  closeKomImportModal();
+  document.getElementById('sheetTabs').innerHTML = '';
+  document.getElementById('tableTitle').textContent = 'Pregled podataka';
+  document.getElementById('tableBody').innerHTML = '<tr><td colspan="13" class="empty-table">Prijavite se za prikaz podataka</td></tr>';
+  document.getElementById('columnFilterRow').innerHTML = '';
+  document.getElementById('stat-total').textContent = '0';
+  document.getElementById('stat-sav').textContent = '0';
+  document.getElementById('stat-izr').textContent = '0';
+  document.getElementById('stat-dod').textContent = '0';
+  document.getElementById('stat-nema').textContent = '0';
+  document.getElementById('stat-kom-total').textContent = '0';
+  document.getElementById('stat-kom-scanned').textContent = '0';
+  document.getElementById('stat-kom-remaining').textContent = '0';
+  document.getElementById('stat-kom-score').textContent = '0%';
+  document.getElementById('searchBox').value = '';
+  resetScan();
+  setAuthUI();
+}
+
+// ─── API HELPERS ──────────────────────────────────────────────────────────────
+async function apiFetch(path, options = {}) {
+  const isFormData = options.body instanceof FormData;
+  const headers = isFormData ? {} : {'Content-Type':'application/json'};
+  const r = await fetch(API + path, {
+    headers,
+    credentials: 'same-origin',
+    ...options
+  });
+  if (!r.ok) {
+    const err = await r.json().catch(() => ({detail: r.statusText}));
+    if(r.status === 401 && path !== '/auth/login' && path !== '/auth/me') {
+      currentUser = null;
+      setAuthUI();
+      clearUiDataForLogout();
+      toast('Sesija je istekla. Prijavite se ponovno.', 'warn');
+    }
+    throw new Error(err.detail || r.statusText);
+  }
+  return r.json();
+}
+
+async function restoreAuthSession() {
+  try {
+    const r = await fetch(API + '/auth/me', {credentials:'same-origin'});
+    if(r.ok) {
+      currentUser = await r.json();
+      authReady = true;
+      setOnline(true);
+      setAuthUI();
+      await loadTure();
+      return;
+    }
+    if(r.status === 401) {
+      authReady = true;
+      currentUser = null;
+      setOnline(true);
+      setAuthUI();
+      clearUiDataForLogout();
+      document.getElementById('loadingText').textContent = 'PRIJAVITE SE';
+      return;
+    }
+    throw new Error('Auth provjera nije uspjela.');
+  } catch (e) {
+    authReady = true;
+    currentUser = null;
+    setOnline(false);
+    setAuthUI();
+    clearUiDataForLogout();
+    document.getElementById('loadingText').textContent = 'SERVER NEDOSTUPAN';
+  }
+}
+
+function openLoginModal() {
+  document.getElementById('loginError').textContent = '';
+  document.getElementById('loginUsername').value = '';
+  document.getElementById('loginPassword').value = '';
+  document.getElementById('loginModal').classList.add('visible');
+  setTimeout(() => document.getElementById('loginUsername').focus(), 30);
+}
+
+function closeLoginModal() {
+  document.getElementById('loginModal').classList.remove('visible');
+}
+
+async function submitLogin() {
+  const username = document.getElementById('loginUsername').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  const error = document.getElementById('loginError');
+  error.textContent = '';
+
+  if(!username || !password) {
+    error.textContent = 'Unesite korisničko ime i lozinku.';
+    return;
+  }
+
+  try {
+    currentUser = await apiFetch('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({username, password})
+    });
+    setOnline(true);
+    setAuthUI();
+    closeLoginModal();
+    toast(`Prijava uspješna: ${currentUser.display_name}`,'success');
+    await loadTure();
+  } catch (e) {
+    error.textContent = e.message;
+  }
+}
+
+async function logoutUser() {
+  try {
+    await apiFetch('/auth/logout', {method:'POST'});
+  } catch (e) {
+    // If logout endpoint fails, still clear local state.
+  }
+  currentUser = null;
+  setAuthUI();
+  clearUiDataForLogout();
+  toast('Odjavljeni ste.','info');
+}
+
+async function startFetchRequest() {
+  if(!isAdmin()){
+    toast('Ova akcija je dozvoljena samo administratoru.','warn');
+    return;
+  }
+  if(fetchBusy) return;
+  const from = document.getElementById('fetchFromDate').value;
+  const to = document.getElementById('fetchToDate').value;
+  if(!from || !to){
+    toast('Unesite početni i završni datum.','warn');
+    return;
+  }
+  if(from > to){
+    toast('Početni datum ne može biti nakon završnog.','error');
+    return;
+  }
+
+  try {
+    setFetchBusy(true);
+    setFetchStatus('Kreiram GRM request...', 'busy');
+    const created = await apiFetch('/grm/request', {
+      method:'POST',
+      body: JSON.stringify({
+        from_date: from,
+        to_date: to,
+        admctr: 'P INOX'
+      })
+    });
+
+    const requestId = created.request_id;
+    pendingFetchRequestId = requestId;
+    setFetchStatus(`Request poslan: ${requestId}`, 'busy');
+    toast(`GRM request poslan: ${requestId}`,'info');
+    await waitForFetchSelection(requestId);
+  } catch (e) {
+    setFetchStatus(`Greška: ${e.message}`, 'err');
+    toast('GRM fetch nije uspio: ' + e.message, 'error');
+  } finally {
+    setFetchBusy(false);
+  }
+}
+
+function openKomImportPicker() {
+  if(!isAdmin()){
+    toast('Ova akcija je dozvoljena samo administratoru.','warn');
+    return;
+  }
+  if(!currentSheet){
+    toast('Prvo otvorite turu za koju želite uvesti KOM.','warn');
+    return;
+  }
+  const input = document.getElementById('komImportFileInput');
+  input.value = '';
+  input.click();
+}
+
+async function handleKomImportFileSelected(event) {
+  const file = event.target.files?.[0];
+  if(!file) return;
+  if(!currentSheet){
+    toast('Nema aktivne ture za KOM import.','warn');
+    return;
+  }
+
+  try {
+    setFetchBusy(true);
+    setFetchStatus(`Radim KOM preview za ${currentSheet}...`, 'busy');
+    const form = new FormData();
+    form.append('tura', currentSheet);
+    form.append('file', file);
+    const preview = await apiFetch('/kom-import/preview', {
+      method:'POST',
+      body: form
+    });
+    komImportPreview = preview;
+    renderKomImportPreview(preview);
+    openKomImportModal();
+    setFetchStatus(`KOM preview spreman za ${currentSheet}`, 'ok');
+    toast(`KOM preview učitan: ${file.name}`,'info');
+  } catch (e) {
+    setFetchStatus(`Greška: ${e.message}`, 'err');
+    toast('KOM preview nije uspio: ' + e.message, 'error');
+  } finally {
+    setFetchBusy(false);
+  }
+}
+
+function renderKomImportPreview(preview) {
+  document.getElementById('komImportSub').textContent =
+    `Tura: ${preview.tura} | File: ${preview.filename} | Sheet: ${preview.sheet}`;
+  document.getElementById('komImportInfo').textContent =
+    `Clean match barkodovi: ${preview.stats.clean_matches} | Promjena redaka: ${preview.stats.changed_rows}`;
+  document.getElementById('confirmKomImportBtn').disabled = !preview.token || preview.stats.clean_matches === 0;
+
+  const statItems = [
+    ['Excel redaka', preview.stats.excel_rows_total],
+    ['Jedinstvenih barkodova', preview.stats.unique_barcodes],
+    ['Clean match', preview.stats.clean_matches],
+    ['Promjena redaka', preview.stats.changed_rows],
+    ['Bez matcha', preview.stats.missing_in_tura],
+    ['Konflikti', preview.stats.conflict_barcodes],
+    ['Invalidni redovi', preview.stats.invalid_rows],
+    ['Bez promjene', preview.stats.unchanged_matches],
+  ];
+  document.getElementById('komImportStats').innerHTML = statItems.map(([label, value]) => `
+    <div class="kom-stat-card">
+      <div class="kom-stat-label">${escapeHtml(label)}</div>
+      <div class="kom-stat-value">${escapeHtml(value)}</div>
+    </div>
+  `).join('');
+
+  const renderRows = (items, makeMain, makeSub) => {
+    if(!items?.length) return '<div class="kom-empty">Nema stavki.</div>';
+    return items.map(item => `
+      <div class="kom-list-row">
+        <div class="kom-list-main">
+          <div>${makeMain(item)}</div>
+          <div class="kom-list-sub">${makeSub(item)}</div>
+        </div>
+      </div>
+    `).join('');
+  };
+
+  document.getElementById('komImportMatches').innerHTML = renderRows(
+    preview.sample_matches,
+    item => `${escapeHtml(item.barcode)} → KOM ${escapeHtml(item.kom)}`,
+    item => `match redaka: ${escapeHtml(item.match_count)} | stari KOM: ${escapeHtml(item.old_kom)} | ${item.changed ? 'mijenja se' : 'ostaje isto'}`
+  );
+  document.getElementById('komImportConflicts').innerHTML = renderRows(
+    preview.conflicts,
+    item => `${escapeHtml(item.barcode)} → konflikt`,
+    item => `BROJ MAX vrijednosti: ${escapeHtml((item.kom_values || []).join(', '))} | redovi: ${escapeHtml((item.row_numbers || []).join(', '))}`
+  );
+  document.getElementById('komImportMissing').innerHTML = renderRows(
+    preview.missing_in_tura_details,
+    item => `${escapeHtml(item.barcode)} → KOM ${escapeHtml(item.kom)}`,
+    () => 'Barkod nije pronađen u trenutno otvorenoj turi.'
+  );
+  document.getElementById('komImportInvalid').innerHTML = renderRows(
+    preview.invalid_rows_details,
+    item => `${escapeHtml(item.barcode || '—')} → invalid`,
+    item => `${escapeHtml(item.reason)} | Excel red: ${escapeHtml(item.row_number)}`
+  );
+}
+
+function openKomImportModal() {
+  document.getElementById('komImportModal').classList.add('visible');
+}
+
+function closeKomImportModal() {
+  document.getElementById('komImportModal').classList.remove('visible');
+}
+
+async function applyKomImportPreview() {
+  if(!komImportPreview?.token) return;
+  try {
+    setFetchBusy(true);
+    setFetchStatus(`Primjenjujem KOM za ${komImportPreview.tura}...`, 'busy');
+    const result = await apiFetch('/kom-import/apply', {
+      method:'POST',
+      body: JSON.stringify({token: komImportPreview.token})
+    });
+    await loadTure();
+    currentSheet = result.tura;
+    buildSheetTabs();
+    loadSheet(currentSheet);
+    closeKomImportModal();
+    komImportPreview = null;
+    setFetchStatus(`KOM učitan: ${result.tura} (${result.updated_rows} redaka)`, 'ok');
+    toast(`KOM import primijenjen: ${result.updated_rows} redaka`,'success');
+  } catch (e) {
+    setFetchStatus(`Greška: ${e.message}`, 'err');
+    toast('KOM import nije uspio: ' + e.message, 'error');
+  } finally {
+    setFetchBusy(false);
+  }
+}
+
+async function waitForFetchSelection(requestId) {
+  const maxPolls = 24;
+  for(let attempt = 1; attempt <= maxPolls; attempt++){
+    setFetchStatus(`Čekam odgovor (${attempt}/${maxPolls})...`, 'busy');
+    const poll = await apiFetch(`/grm/request/${encodeURIComponent(requestId)}/poll`, {
+      method:'POST'
+    });
+
+    if(poll.status === 'failed'){
+      throw new Error('GRM je vratio failed status za request.');
+    }
+
+    if(poll.ready){
+      setFetchStatus('Manifest pronađen, pripremam odabir naloga...', 'busy');
+      const options = await apiFetch(`/grm/request/${encodeURIComponent(requestId)}/work-orders`);
+      openWorkOrderModal(requestId, options.work_orders || []);
+      return;
+    }
+
+    await new Promise(resolve => setTimeout(resolve, 5000));
+  }
+
+  throw new Error('Vrijeme čekanja je isteklo. Response paket još nije spreman.');
+}
+
+function openWorkOrderModal(requestId, workOrders) {
+  pendingFetchRequestId = requestId;
+  pendingWorkOrders = Array.isArray(workOrders) ? workOrders : [];
+  selectedWorkOrders = new Set();
+  document.getElementById('workOrderSearch').value = '';
+  document.getElementById('workOrderModalSub').textContent =
+    `Pronađeno ${pendingWorkOrders.length} radnih naloga za request ${requestId}. Odaberite koje želite učitati.`;
+  renderWorkOrderOptions();
+  document.getElementById('workOrderModal').classList.add('visible');
+}
+
+function closeWorkOrderModal() {
+  document.getElementById('workOrderModal').classList.remove('visible');
+}
+
+function cancelWorkOrderSelection() {
+  closeWorkOrderModal();
+  if(fetchBusy) return;
+  if(pendingFetchRequestId) {
+    setFetchStatus(`Odabir otkazan za request ${pendingFetchRequestId}`, 'warn');
+  }
+  pendingFetchRequestId = null;
+  pendingWorkOrders = [];
+  selectedWorkOrders.clear();
+}
+
+function getFilteredWorkOrders() {
+  const term = document.getElementById('workOrderSearch').value.trim().toLowerCase();
+  return pendingWorkOrders.filter(item => {
+    if(!term) return true;
+    return [item.sifradn, item.nalog, item.tura_br].some(v => (v || '').toLowerCase().includes(term));
+  });
+}
+
+function updateWorkOrderCounts(visibleItems) {
+  document.getElementById('workOrderCounts').textContent =
+    `Ukupno: ${pendingWorkOrders.length} | Prikazano: ${visibleItems.length} | Odabrano: ${selectedWorkOrders.size}`;
+  document.getElementById('workOrderSelectedInfo').textContent = `Odabrano: ${selectedWorkOrders.size}`;
+  document.getElementById('confirmWorkOrdersBtn').disabled = selectedWorkOrders.size === 0 || fetchBusy;
+}
+
+function renderWorkOrderOptions() {
+  const list = document.getElementById('workOrderList');
+  const items = getFilteredWorkOrders();
+  updateWorkOrderCounts(items);
+
+  if(!items.length) {
+    list.innerHTML = '<div class="wo-empty">Nema naloga za prikaz prema trenutnoj pretrazi.</div>';
+    return;
+  }
+
+  list.innerHTML = items.map(item => {
+    const checked = selectedWorkOrders.has(item.sifradn);
+    return `
+      <label class="wo-item${checked ? ' selected' : ''}">
+        <input type="checkbox" ${checked ? 'checked' : ''} onchange="toggleWorkOrder('${escapeJs(item.sifradn)}', this.checked)">
+        <div class="wo-main">
+          <div class="wo-line1">${escapeHtml(item.sifradn)} | ${escapeHtml(item.nalog || '—')}</div>
+          <div class="wo-line2">Tura br: ${escapeHtml(item.tura_br || '—')}</div>
+        </div>
+        <div class="wo-badge">${item.child_count || 0} stavki</div>
+      </label>
+    `;
+  }).join('');
+}
+
+function toggleWorkOrder(sifradn, checked) {
+  if(checked) selectedWorkOrders.add(sifradn);
+  else selectedWorkOrders.delete(sifradn);
+  renderWorkOrderOptions();
+}
+
+function selectVisibleWorkOrders(markSelected) {
+  getFilteredWorkOrders().forEach(item => {
+    if(markSelected) selectedWorkOrders.add(item.sifradn);
+    else selectedWorkOrders.delete(item.sifradn);
+  });
+  renderWorkOrderOptions();
+}
+
+function selectAllWorkOrders() {
+  pendingWorkOrders.forEach(item => selectedWorkOrders.add(item.sifradn));
+  renderWorkOrderOptions();
+}
+
+function clearAllWorkOrders() {
+  selectedWorkOrders.clear();
+  renderWorkOrderOptions();
+}
+
+async function confirmWorkOrderSelection() {
+  if(!pendingFetchRequestId || selectedWorkOrders.size === 0 || fetchBusy) return;
+
+  try {
+    setFetchBusy(true);
+    setFetchStatus('Učitavam odabrane radne naloge...', 'busy');
+    const selected = [...selectedWorkOrders];
+    const ingested = await apiFetch(`/grm/request/${encodeURIComponent(pendingFetchRequestId)}/ingest-selection`, {
+      method:'POST',
+      body: JSON.stringify({sifradn: selected})
+    });
+    closeWorkOrderModal();
+    await loadTure();
+    currentSheet = pendingFetchRequestId;
+    buildSheetTabs();
+    loadSheet(currentSheet);
+    setFetchStatus(`Učitano: ${pendingFetchRequestId} (${ingested.inserted || 0} redaka)`, 'ok');
+    toast(`Nova tura učitana: ${pendingFetchRequestId}`,'success');
+    pendingFetchRequestId = null;
+    pendingWorkOrders = [];
+    selectedWorkOrders.clear();
+  } catch (e) {
+    setFetchStatus(`Greška: ${e.message}`, 'err');
+    toast('Učitavanje odabranih naloga nije uspjelo: ' + e.message, 'error');
+  } finally {
+    setFetchBusy(false);
+  }
+}
+
+function setOnline(ok) {
+  const b = document.getElementById('connBadge');
+  b.textContent = ok ? '● ONLINE' : '● OFFLINE';
+  b.className = 'conn-badge ' + (ok ? 'online' : 'offline');
+}
+
+// ─── TURE / SHEETS ────────────────────────────────────────────────────────────
+async function loadTure() {
+  try {
+    document.getElementById('loadingText').textContent = 'UČITAVANJE TURA...';
+    const ture = await apiFetch('/ture');
+    setOnline(true);
+
+    if (!ture.length) {
+      document.getElementById('loadingText').textContent = 'NEMA PODATAKA — UVEZITE EXCEL';
+      toast('Nema podataka. Uvezite Excel s import_tura.py', 'warn');
+      hideLoading();
+      return;
+    }
+
+    document.getElementById('loadingText').textContent = 'UČITAVANJE PODATAKA...';
+    const sviPodaci = await apiFetch('/dijelovi');
+    allData = sviPodaci;
+    setOnline(true);
+
+    currentSheet = ture[ture.length - 1]; // zadnja tura je defaultna
+    buildSheetTabs(ture);
+    loadSheet(currentSheet);
+  } catch(e) {
+    setOnline(false);
+    document.getElementById('loadingText').textContent = 'SERVER NEDOSTUPAN';
+    toast('Ne mogu se spojiti na server: ' + e.message, 'error');
+    hideLoading();
+  }
+}
+
+function buildSheetTabs(ture) {
+  const tabs = document.getElementById('sheetTabs');
+  const list = ture || [...new Set(allData.map(r => r.tura))].sort();
+  tabs.innerHTML = list.map(t =>
+    `<div class="sheet-tab${t===currentSheet?' active':''}" onclick="switchSheet('${t}')">${t}</div>`
+  ).join('');
+}
+
+function switchSheet(name) {
+  currentSheet = name;
+  buildSheetTabs();
+  loadSheet(name);
+}
+
+function loadSheet(name) {
+  activeData = allData.filter(r => r.tura === name);
+  displayData = [...activeData];
+  document.getElementById('tableTitle').textContent = name;
+  renderColumnFilters();
+  filterTable();
+}
+
+// ─── SCAN ─────────────────────────────────────────────────────────────────────
+function setupScanInput() {
+  const inp = document.getElementById('barcodeInput');
+  const kol = document.getElementById('kolicaInput');
+  let timer = null;
+
+  inp.addEventListener('input', () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => { const v=inp.value.trim(); if(v.length>=4) doScan(v); }, 300);
+  });
+  inp.addEventListener('keydown', e => {
+    if(e.key==='Enter'){ clearTimeout(timer); const v=inp.value.trim(); if(v) doScan(v); }
+  });
+  kol.addEventListener('focus', () => {
+    if(scanStep==='barcode'){ kol.blur(); showWorkflowWarning(); }
+  });
+  inp.addEventListener('focus', () => {
+    if(scanStep==='kolica') toast('⚠ Unesite broj kolica pa potvrdite!','warn');
+  });
+  kol.addEventListener('input', updateConfirmBtn);
+  setScanStep('barcode');
+}
+
+function setScanStep(step) {
+  scanStep = step;
+  const bI=document.getElementById('barcodeInput'), kI=document.getElementById('kolicaInput');
+  const bW=document.getElementById('barcodeWrap'), kW=document.getElementById('kolicaWrap');
+  if(step==='barcode'){
+    bW.className='scan-section step-wrap step-active'; kW.className='kolica-section step-wrap step-locked';
+    bI.disabled=false; kI.disabled=true; bI.focus();
+  } else {
+    bW.className='scan-section step-wrap step-done'; kW.className='kolica-section step-wrap step-active';
+    bI.disabled=false; kI.disabled=false; kI.focus();
+  }
+  updateConfirmBtn();
+}
+
+function showWorkflowWarning() {
+  const inp=document.getElementById('barcodeInput');
+  inp.classList.remove('warn-flash'); void inp.offsetWidth; inp.classList.add('warn-flash');
+  setTimeout(()=>inp.classList.remove('warn-flash'),700);
+  toast('⚠ Prvo skenirajte barcode potrebe!','warn');
+}
+
+async function doScan(barcode) {
+  if(!currentUser) {
+    toast('Prijavite se za skeniranje.','warn');
+    openLoginModal();
+    return;
+  }
+  const inp = document.getElementById('barcodeInput');
+  try {
+    const result = await apiFetch(`/scan/${encodeURIComponent(barcode)}`);
+    setOnline(true);
+
+    if (!result.has_izrezano) {
+      showScanResult('none-izrezano', barcode, result);
+      flashInput(inp,'error');
+      showNoIzrezanoModal(barcode, result.total, result.statusi.join(', '));
+      return;
+    }
+
+    const row = result.row;
+    lastScannedBarcode = barcode;
+    lastScannedRowId = row.id;
+
+    // Update local cache
+    const idx = allData.findIndex(r => r.id === row.id);
+    if(idx >= 0) allData[idx] = row;
+
+    // Auto-switch tura if needed
+    if(row.tura !== currentSheet){
+      currentSheet = row.tura;
+      buildSheetTabs();
+      loadSheet(currentSheet);
+      toast(`↪ Prebačeno na: ${currentSheet}`,'info');
+    } else {
+      loadSheet(currentSheet);
+    }
+
+    showScanResult(true, barcode, row);
+    flashInput(inp,'success');
+    highlightTableRows([row.id]);
+
+    toast(`✓ Tijek → ${formatTijek(row)} · Preostalo: ${result.remaining_scans}`,'success');
+    setScanStep('kolica');
+
+  } catch(e) {
+    if(e.message.includes('nije pronađen')){
+      showScanResult(false, barcode, null);
+      flashInput(inp,'error');
+      toast(e.message,'error');
+    } else {
+      setOnline(false);
+      toast('Greška servera: '+e.message,'error');
+    }
+  }
+}
+
+function flashInput(el, type) {
+  el.classList.remove('success-flash','error-flash','warn-flash');
+  void el.offsetWidth;
+  el.classList.add(type+'-flash');
+  setTimeout(()=>el.classList.remove(type+'-flash','warn-flash'),700);
+}
+
+function showScanResult(state, barcode, row) {
+  const box=document.getElementById('scanResult'), count=document.getElementById('resultCount'), rows=document.getElementById('resultRows');
+  box.classList.add('visible');
+  if(state===false){
+    count.className='result-notfound'; count.textContent='Nije pronađeno';
+    rows.innerHTML=`<div class="result-row"><span class="result-key">Barcode</span><span class="result-val" style="color:var(--danger)">${barcode}</span></div>`;
+    return;
+  }
+  if(state==='none-izrezano'){
+    count.className='result-notfound'; count.textContent='Sve skenirano';
+    rows.innerHTML=`<div class="result-row"><span class="result-key">Barcode</span><span class="result-val" style="color:var(--warn)">${barcode}</span></div>
+    <div class="result-row"><span class="result-key">Info</span><span class="result-val" style="color:var(--warn)">Sve skenirano (${row?.completed_progress||'—'})</span></div>`;
+    return;
+  }
+  count.className='result-found'; count.textContent='Pronađeno → SAVIJENO';
+  rows.innerHTML=`
+    <div class="result-row"><span class="result-key">Barcode</span><span class="result-val">${row.barcode}</span></div>
+    <div class="result-row"><span class="result-key">Tura</span><span class="result-val" style="color:var(--accent)">${row.tura}</span></div>
+    <div class="result-row"><span class="result-key">Radni nalog</span><span class="result-val">${row.nalog||'—'}</span></div>
+    <div class="result-row"><span class="result-key">Broj RN</span><span class="result-val">${row.broj_rn||'—'}</span></div>
+    <div class="result-row"><span class="result-key">Part</span><span class="result-val">${row.part||'—'}</span></div>
+    <div class="result-row"><span class="result-key">KOM.</span><span class="result-val">${row.kom||1}</span></div>
+    <div class="result-row"><span class="result-key">Tijek</span><span class="result-val">${formatTijek(row)}</span></div>
+    <div class="result-row"><span class="result-key">Klasifikacija</span><span class="result-val">${row.klasifikacija||'—'}</span></div>
+    <div class="result-row"><span class="result-key">Status</span><span class="result-val">
+      <span style="color:var(--success)">SAVIJENO</span>
+    </span></div>
+    <div class="result-row"><span class="result-key">Kolica br.</span><span class="result-val" style="color:var(--warn)">čeka unos</span></div>
+    <div class="result-row"><span class="result-key">Tura br</span><span class="result-val">${row.tura_br||'—'}</span></div>
+  `;
+}
+
+function updateConfirmBtn() {
+  const v=document.getElementById('kolicaInput').value.trim();
+  document.getElementById('confirmBtn').disabled = !(lastScannedRowId && v && scanStep==='kolica');
+}
+
+async function confirmAssign() {
+  if(!currentUser) {
+    toast('Prijavite se za dodjelu kolica.','warn');
+    openLoginModal();
+    return;
+  }
+  const kolica = parseInt(document.getElementById('kolicaInput').value);
+  if(!kolica || !lastScannedRowId) return;
+
+  try {
+    const updated = await apiFetch(`/dijelovi/${lastScannedRowId}/kolica`, {
+      method:'PATCH', body: JSON.stringify({kolica})
+    });
+    setOnline(true);
+
+    // Update local cache
+    const idx = allData.findIndex(r => r.id === updated.id);
+    if(idx>=0) allData[idx] = updated;
+
+    const logEntry = {
+      barcode: lastScannedBarcode,
+      part: updated.part || updated.nalog,
+      kolica,
+      time: new Date().toLocaleTimeString('hr-HR'),
+    };
+    scanLog.unshift(logEntry);
+    updateLog();
+
+    toast(`✓ Kolica ${kolica} dodijeljena`,'success');
+    loadSheet(currentSheet);
+    resetScan();
+  } catch(e) {
+    setOnline(false);
+    toast('Greška: '+e.message,'error');
+  }
+}
+
+function clearKolica() { document.getElementById('kolicaInput').value=''; updateConfirmBtn(); }
+
+function resetScan() {
+  document.getElementById('barcodeInput').value='';
+  document.getElementById('kolicaInput').value='';
+  document.getElementById('scanResult').classList.remove('visible');
+  lastScannedRowId=null; lastScannedBarcode=null;
+  highlightTableRows([]);
+  setScanStep('barcode');
+}
+
+function showNoIzrezanoModal(barcode, count, statusi) {
+  document.getElementById('modalBarcode').textContent = barcode;
+  document.getElementById('modalStatus').textContent = statusi;
+  document.getElementById('modalCount').textContent = count;
+  document.getElementById('noIzrezanoModal').classList.add('visible');
+}
+function closeModal() {
+  document.getElementById('noIzrezanoModal').classList.remove('visible');
+  document.getElementById('barcodeInput').value='';
+  document.getElementById('barcodeInput').focus();
+}
+
+// ─── TABLE ────────────────────────────────────────────────────────────────────
+function renderColumnFilters() {
+  const row = document.getElementById('columnFilterRow');
+  row.innerHTML = COLUMN_FILTERS.map(col => {
+    const values = getColumnFilterValues(col.key);
+    const selected = Array.isArray(columnFilters[col.key])
+      ? columnFilters[col.key].filter(value => values.includes(value))
+      : [];
+    if(selected.length) columnFilters[col.key] = selected;
+    else delete columnFilters[col.key];
+
+    const draft = openColumnFilterKey === col.key
+      ? (columnFilterDrafts[col.key] || [...selected])
+      : [...selected];
+    const search = (columnFilterSearches[col.key] || '').toLowerCase();
+    const filteredValues = values.filter(value =>
+      displayColumnValue(value).toLowerCase().includes(search)
+    );
+
+    const options = filteredValues.length
+      ? filteredValues.map(value => `
+          <label class="filter-option">
+            <input type="checkbox" ${draft.includes(value) ? 'checked' : ''} onchange="toggleColumnFilterValue('${escapeJs(col.key)}', '${escapeJs(value)}', this.checked)">
+            <span>${escapeHtml(displayColumnValue(value))}</span>
+          </label>
+        `).join('')
+      : `<div class="filter-empty">Nema vrijednosti</div>`;
+
+    return `<th>
+      <button type="button" class="column-filter-btn${selected.length ? ' active' : ''}" onclick="toggleColumnFilterPanel(event, '${escapeJs(col.key)}')" title="Filter: ${escapeHtml(col.label)}">
+        <span class="filter-btn-text">${escapeHtml(getColumnFilterSummary(col.key))}</span>
+        <span>${selected.length ? `(${selected.length})` : '▾'}</span>
+      </button>
+      <div class="filter-panel${openColumnFilterKey === col.key ? ' visible' : ''}" onclick="event.stopPropagation()">
+        <input class="filter-panel-search" type="text" value="${escapeHtml(columnFilterSearches[col.key] || '')}" placeholder="Pretraži..." oninput="setColumnFilterSearch('${escapeJs(col.key)}', this.value)">
+        <div class="filter-panel-actions">
+          <button type="button" class="filter-mini-btn" onclick="selectAllColumnFilterValues('${escapeJs(col.key)}')">Odaberi sve</button>
+          <button type="button" class="filter-mini-btn" onclick="clearColumnFilterDraft('${escapeJs(col.key)}')">Makni sve</button>
+        </div>
+        <div class="filter-options">${options}</div>
+        <div class="filter-panel-footer">
+          <span class="filter-selected-count">Odabrano: ${draft.length}</span>
+          <div class="filter-panel-actions">
+            <button type="button" class="filter-mini-btn" onclick="applyColumnFilter('${escapeJs(col.key)}')">Primijeni</button>
+            <button type="button" class="filter-mini-btn" onclick="closeColumnFilterPanel()">Zatvori</button>
+          </div>
+        </div>
+      </div>
+    </th>`;
+  }).join('');
+}
+
+function toggleColumnFilterPanel(event, key) {
+  event.stopPropagation();
+  if(openColumnFilterKey === key) {
+    closeColumnFilterPanel();
+    return;
+  }
+  const selected = Array.isArray(columnFilters[key]) ? [...columnFilters[key]] : [];
+  columnFilterDrafts[key] = [...selected];
+  columnFilterSearches[key] = columnFilterSearches[key] || '';
+  openColumnFilterKey = key;
+  renderColumnFilters();
+}
+
+function closeColumnFilterPanel() {
+  openColumnFilterKey = null;
+  renderColumnFilters();
+}
+
+function setColumnFilterSearch(key, value) {
+  columnFilterSearches[key] = value;
+  renderColumnFilters();
+}
+
+function toggleColumnFilterValue(key, value, checked) {
+  const draft = new Set(columnFilterDrafts[key] || []);
+  if(checked) draft.add(value);
+  else draft.delete(value);
+  columnFilterDrafts[key] = [...draft];
+  renderColumnFilters();
+}
+
+function selectAllColumnFilterValues(key) {
+  const values = getColumnFilterValues(key);
+  const search = (columnFilterSearches[key] || '').toLowerCase();
+  const filteredValues = values.filter(value =>
+    displayColumnValue(value).toLowerCase().includes(search)
+  );
+  columnFilterDrafts[key] = [...filteredValues];
+  renderColumnFilters();
+}
+
+function clearColumnFilterDraft(key) {
+  columnFilterDrafts[key] = [];
+  renderColumnFilters();
+}
+
+function applyColumnFilter(key) {
+  const selected = (columnFilterDrafts[key] || []).filter(Boolean);
+  if(selected.length) columnFilters[key] = [...selected];
+  else delete columnFilters[key];
+  openColumnFilterKey = null;
+  renderColumnFilters();
+  filterTable();
+}
+
+function filterTable() {
+  const s = document.getElementById('searchBox').value.toLowerCase();
+  displayData = activeData.filter(r => {
+    const ms = !s || [r.barcode,r.nalog,r.broj_rn,r.part,r.kom,formatTijek(r),r.materijal,r.klasifikacija,r.tura_br].some(v=>String(v||'').toLowerCase().includes(s));
+    let mf = true;
+    if(filterStatus==='SAVIJENO') mf=r.status==='SAVIJENO';
+    else if(filterStatus==='IZREZANO') mf=r.status==='IZREZANO';
+    else if(filterStatus==='KRIVO SAVIJENO') mf=r.status==='KRIVO SAVIJENO';
+    else if(filterStatus==='kolica') mf=r.kolica!=null;
+    const mc = COLUMN_FILTERS.every(col => {
+      const expected = Array.isArray(columnFilters[col.key]) ? columnFilters[col.key] : [];
+      if(!expected.length) return true;
+      const tokens = getColumnFilterTokens(r, col.key);
+      return expected.some(value => tokens.includes(value));
+    });
+    return ms&&mf&&mc;
+  });
+  if(sortKey) displayData.sort((a,b)=>{
+    const va=getSortValue(a, sortKey), vb=getSortValue(b, sortKey);
+    return va>vb?sortDir:va<vb?-sortDir:0;
+  });
+  renderTable();
+  updateStats();
+}
+
+function setFilter(f,el){
+  filterStatus=f;
+  document.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active'); filterTable();
+}
+function sortTable(k){ if(sortKey===k)sortDir*=-1; else{sortKey=k;sortDir=1;} filterTable(); }
+
+function highlightTableRows(ids) { highlightedIds=new Set(ids); renderTable(); }
+
+function renderTable() {
+  const tbody=document.getElementById('tableBody');
+  if(!displayData.length){tbody.innerHTML='<tr><td colspan="13" class="empty-table">Nema podataka</td></tr>';return;}
+
+  // Completed nalogs (all rows have full scan progress)
+  const groups={};
+  activeData.forEach(r=>{ if(!groups[r.nalog])groups[r.nalog]=[]; groups[r.nalog].push(r); });
+  const done=new Set(
+    Object.entries(groups)
+      .filter(([,rows])=>rows.every(row => getScanCountValue(row) >= getKomValue(row)))
+      .map(([n])=>n)
+  );
+
+  tbody.innerHTML = displayData.map(r=>{
+    let cls='';
+    if(highlightedIds.has(r.id)) cls='highlighted';
+    else if(done.has(r.nalog)) cls='row-savijeno-all';
+    else if(r.status==='SAVIJENO') cls='row-savijeno';
+    else if(r.status==='KRIVO SAVIJENO') cls='row-krivo';
+    const badgeCls = 'badge-'+r.status.split(' ')[0];
+    return `<tr class="${cls}">
+      <td class="td-barcode">${r.barcode}</td>
+      <td class="td-nalog">${r.nalog||'—'}</td>
+      <td class="td-broj-rn">${r.broj_rn||'—'}</td>
+      <td class="td-part">${r.part||'—'}</td>
+      <td class="td-kom">${
+        isAdmin()
+          ? `<input type="number" min="1" class="kom-input" value="${r.kom||1}" onchange="changeKom(${r.id}, this.value)" onkeydown="event.stopPropagation()">`
+          : `${r.kom||1}`
+      }</td>
+      <td class="td-mat">${r.materijal||'—'}</td>
+      <td class="td-klas">${r.klasifikacija||'—'}</td>
+      <td class="td-tijek">${
+        isAdmin()
+          ? `<div class="tijek-edit"><input type="number" min="0" max="${getKomValue(r)}" class="tijek-input" value="${getScanCountValue(r)}" onchange="changeTijek(${r.id}, this.value)" onkeydown="event.stopPropagation()"><span class="tijek-total">/ ${getKomValue(r)}</span></div>`
+          : `${formatTijek(r)}`
+      }</td>
+      <td>${
+        isAdmin()
+          ? `<span class="badge-status ${badgeCls} status-badge-btn" onclick="openStatusDD(event,${r.id})">${r.status} ▾</span>`
+          : `<span class="badge-status ${badgeCls}">${r.status}</span>`
+      }</td>
+      <td class="td-kolica${r.kolica==null?' empty':''}">${
+        isAdmin()
+          ? `<input type="number" min="1" class="kolica-inline-input" value="${r.kolica!=null?r.kolica:''}" placeholder="nema" onchange="changeKolicaAdmin(${r.id}, this.value)" onkeydown="event.stopPropagation()">`
+          : `${r.kolica!=null?r.kolica:'nema'}`
+      }</td>
+      <td class="td-turabr">${r.tura_br||'—'}</td>
+      <td>${r.operater?`<span class="op-chip">${r.operater.split('@')[0]}</span>`:'<span style="color:var(--muted)">—</span>'}</td>
+      <td style="color:var(--muted);font-size:0.7rem">${r.vrijeme||'—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ─── STATUS DROPDOWN ─────────────────────────────────────────────────────────
+let openDDId=null;
+function openStatusDD(e,rowId){
+  if(!isAdmin()){
+    toast('Ručna promjena statusa je dozvoljena samo administratoru.','warn');
+    return;
+  }
+  e.stopPropagation(); closeStatusDD(); openDDId=rowId;
+  const row=activeData.find(r=>r.id===rowId); if(!row)return;
+  const dd=document.getElementById('statusDropdown');
+  dd.innerHTML=STATUS_OPTIONS.map(s=>`<div class="dd-option${s===row.status?' dd-selected':''}" onclick="changeStatus(${rowId},'${s}')">${s}</div>`).join('');
+  const rect=e.currentTarget.getBoundingClientRect();
+  dd.style.top=(rect.bottom+window.scrollY+4)+'px'; dd.style.left=rect.left+'px';
+  dd.classList.add('visible');
+}
+function closeStatusDD(){ document.getElementById('statusDropdown').classList.remove('visible'); openDDId=null; }
+document.addEventListener('click',closeStatusDD);
+document.addEventListener('click',closeColumnFilterPanel);
+
+async function changeStatus(rowId,newStatus){
+  try{
+    const updated=await apiFetch(`/dijelovi/${rowId}/status`,{
+      method:'PATCH', body:JSON.stringify({status:newStatus})
+    });
+    setOnline(true);
+    const idx=allData.findIndex(r=>r.id===rowId);
+    if(idx>=0) allData[idx]=updated;
+    closeStatusDD();
+    loadSheet(currentSheet);
+    toast(`Status → ${newStatus}`,'info');
+  }catch(e){
+    setOnline(false); toast('Greška: '+e.message,'error');
+  }
+}
+
+async function changeKom(rowId, value){
+  const kom = Math.max(1, parseInt(value || '1', 10) || 1);
+  try{
+    const updated = await apiFetch(`/dijelovi/${rowId}/kom`, {
+      method:'PATCH', body:JSON.stringify({kom})
+    });
+    setOnline(true);
+    const idx = allData.findIndex(r => r.id === rowId);
+    if(idx >= 0) allData[idx] = updated;
+    loadSheet(currentSheet);
+    toast(`KOM. → ${kom}`,'info');
+  }catch(e){
+    setOnline(false);
+    toast('Greška: ' + e.message, 'error');
+    loadSheet(currentSheet);
+  }
+}
+
+// ─── STATS ────────────────────────────────────────────────────────────────────
+async function changeTijek(rowId, value){
+  const row = allData.find(r => r.id === rowId);
+  const kom = getKomValue(row);
+  const scanCount = Math.min(kom, Math.max(0, parseInt(value || '0', 10) || 0));
+  try{
+    const updated = await apiFetch(`/dijelovi/${rowId}/tijek`, {
+      method:'PATCH', body:JSON.stringify({scan_count: scanCount})
+    });
+    setOnline(true);
+    const idx = allData.findIndex(r => r.id === rowId);
+    if(idx >= 0) allData[idx] = updated;
+    loadSheet(currentSheet);
+    toast(`TIJEK â†’ ${formatTijek(updated)}`,'info');
+  }catch(e){
+    setOnline(false);
+    toast('GreÅ¡ka: ' + e.message, 'error');
+    loadSheet(currentSheet);
+  }
+}
+
+async function changeKolicaAdmin(rowId, value){
+  const trimmed = String(value ?? '').trim();
+  const payload = trimmed ? {kolica: Math.max(1, parseInt(trimmed, 10) || 1)} : {kolica: null};
+  try{
+    const updated = await apiFetch(`/dijelovi/${rowId}/kolica-admin`, {
+      method:'PATCH', body:JSON.stringify(payload)
+    });
+    setOnline(true);
+    const idx = allData.findIndex(r => r.id === rowId);
+    if(idx >= 0) allData[idx] = updated;
+    loadSheet(currentSheet);
+    toast(`KOLICA BR â†’ ${updated.kolica != null ? updated.kolica : 'nema'}`,'info');
+  }catch(e){
+    setOnline(false);
+    toast('GreÅ¡ka: ' + e.message, 'error');
+    loadSheet(currentSheet);
+  }
+}
+
+function updateStats(){
+  const ukupno = displayData.length;
+  const savijeno = displayData.filter(r=>r.status==='SAVIJENO').length;
+  const izrezano = displayData.filter(r=>r.status==='IZREZANO').length;
+  const sKolicima = displayData.filter(r=>r.kolica!=null).length;
+  const bezKolica = displayData.filter(r=>r.kolica==null).length;
+  const komUkupno = displayData.reduce((sum, row) => sum + getKomValue(row), 0);
+  const skenirano = displayData.reduce((sum, row) => sum + getScanCountValue(row), 0);
+  const preostalo = Math.max(komUkupno - skenirano, 0);
+  const score = komUkupno > 0 ? `${((skenirano / komUkupno) * 100).toFixed(1)}%` : '0%';
+
+  document.getElementById('stat-total').textContent = ukupno;
+  document.getElementById('stat-sav').textContent = savijeno;
+  document.getElementById('stat-izr').textContent = izrezano;
+  document.getElementById('stat-dod').textContent = sKolicima;
+  document.getElementById('stat-nema').textContent = bezKolica;
+  document.getElementById('stat-kom-total').textContent = komUkupno;
+  document.getElementById('stat-kom-scanned').textContent = skenirano;
+  document.getElementById('stat-kom-remaining').textContent = preostalo;
+  document.getElementById('stat-kom-score').textContent = score;
+}
+
+// ─── LOG ──────────────────────────────────────────────────────────────────────
+function updateLog(){
+  const list=document.getElementById('logList');
+  document.getElementById('logCount').textContent=scanLog.length;
+  if(!scanLog.length){list.innerHTML='<div style="padding:1.5rem;color:var(--muted);font-family:\'IBM Plex Mono\',monospace;font-size:0.75rem;text-align:center;">Nema dodijeljenih kolica</div>';return;}
+  list.innerHTML=scanLog.map(l=>`
+    <div class="log-item">
+      <div><div class="log-barcode">${l.barcode}</div><div class="log-part">${l.part||'—'}</div></div>
+      <div><div class="log-kolica">${l.kolica}</div><div class="log-time">${l.time}</div></div>
+    </div>`).join('');
+}
+
+// ─── TOAST ────────────────────────────────────────────────────────────────────
+function toast(msg,type='info'){
+  const el=document.createElement('div');
+  el.className=`toast ${type}`; el.textContent=msg;
+  document.getElementById('toastContainer').appendChild(el);
+  setTimeout(()=>{ el.style.cssText='opacity:0;transform:translateX(20px);transition:all 0.3s'; setTimeout(()=>el.remove(),300); },2800);
+}
+
+// ─── START ────────────────────────────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>
