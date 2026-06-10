@@ -29,10 +29,10 @@ import os
 import pandas as pd
 from db import get_db
 
-TRACKING_PATH = Path(__file__).with_name("grm_request_state.json")
-REQUEST_INBOX = Path(r"Z:\004_Konstrukcija\010_BI_File_Drop\REQUEST")
-RESPONSE_ROOT = Path(r"Z:\004_Konstrukcija\010_BI_File_Drop\ALDO_POC\responses")
-ERROR_ROOT = Path(r"Z:\004_Konstrukcija\010_BI_File_Drop\ALDO_POC\errors")
+TRACKING_PATH = Path("/mnt/nas/004_Konstrukcija/010_BI_File_Drop/ALDO_POC/grm_request_state.json")
+REQUEST_INBOX = Path("/mnt/nas/004_Konstrukcija/010_BI_File_Drop/REQUEST")
+RESPONSE_ROOT = Path("/mnt/nas/004_Konstrukcija/010_BI_File_Drop/ALDO_POC/responses")
+ERROR_ROOT = Path("/mnt/nas/004_Konstrukcija/010_BI_File_Drop/ALDO_POC/errors")
 MODULE_ID = "shopfloor_parts_lifecycle_v1"
 TARGET_DROP = "ALDO_POC"
 CONTRACT_VERSION = "poc-v1"
