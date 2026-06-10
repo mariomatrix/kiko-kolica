@@ -1,0 +1,20 @@
+# Ignoriraj lokalne baze i backup-e
+backend/kolica.db
+backend/kolica_backup.db
+backend/grm_request_state.json
+
+# Ignoriraj privremene datoteke i cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.vscode/
+.git/
+.gitignore
+.dockerignore
+Dockerfile
+
+# Ignoriraj Excel privremene datoteke
+backend/*xlsx
+backend/~*
